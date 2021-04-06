@@ -1,2 +1,6 @@
 __pycache__/
 
+data/
+lightning_logs/
+.vector_cache/
+

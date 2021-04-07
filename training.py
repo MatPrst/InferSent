@@ -16,7 +16,7 @@ class SNLIDataModule(pl.LightningDataModule):
 
         self.snli_train, self.snli_val, self.snli_test = torchtext.legacy.datasets.SNLI.splits(self.text_field, self.label_field, root=self.data_dir)
         self.text_field.build_vocab(self.snli_train, vectors=torchtext.vocab.GloVe(name='840B', dim=300, cache=self.data_dir, max_vectors=self.max_vectors))
-        self.label_field.build_vocab(self.snli_train)
+        self.label_field.build_vocab(self.snli_train, specials_first=False)
 
         self.train_iter, self.val_iter, self.test_iter = torchtext.legacy.data.BucketIterator.splits(
             (self.snli_train, self.snli_val, self.snli_test), batch_size=self.batch_size, device="cuda")
@@ -48,17 +48,31 @@ class InferenceClassifier(pl.LightningModule):
         self.encoder = encoder
         self.classifier = nn.Sequential(
             nn.Linear(in_features=4*300, out_features=512),
-            nn.Linear(in_features=512, out_features=3)
+            nn.Linear(in_features=512, out_features=3),
+            nn.Softmax(dim=1)
         )
     
     def forward(self, x):
         x = self.embeddings(x)
-        print("forward classifier return shape=", x.size())
         x = self.encoder(x)
         return x
     
     def training_step(self, batch, batch_idx):
-        self.forward(batch.premise)
+        premise_repr = self.forward(batch.premise)
+        hypothesis_repr = self.forward(batch.hypothesis) # B x 300
+
+        combination_repr = torch.cat(
+            (
+                premise_repr, 
+                hypothesis_repr, 
+                torch.abs(premise_repr - hypothesis_repr), 
+                premise_repr * hypothesis_repr
+            ),
+            dim=1
+        )
+
+        out = self.classifier(combination_repr)
+        return nn.functional.cross_entropy(out, batch.label)
     
     def configure_optimizers(self):
         return torch.optim.SGD(self.parameters(), lr=0.1)

@@ -118,13 +118,14 @@ class InferenceClassifier(pl.LightningModule):
         self.log("test_acc", acc)
     
     def configure_optimizers(self):
-        return torch.optim.SGD(self.parameters(), lr=0.1)
-
+        optimizer = torch.optim.SGD(self.parameters(), lr=0.1)
+        scheduler = torch.optim.lr_scheduler.MultiplicativeLR(optimizer, lambda epoch: 0.99, verbose=True)
+        return [optimizer], [scheduler]
 
 pl.seed_everything(42)
 data_module = SNLIDataModule(data_dir="./data", max_vectors=10000)
 data_module.setup()
-trainer = pl.Trainer(max_epochs=3)
+trainer = pl.Trainer(gpus=1, max_epochs=3)
 
 encoder = AWEModel()
 

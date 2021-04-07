@@ -34,7 +34,12 @@ class SNLIDataModule(pl.LightningDataModule):
         return self.text_field.vocab.vectors
 
 class AWEModel(nn.Module):
-    pass
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, x):
+        # B x S x 300
+        return x.mean(dim=1)
 
 class InferenceClassifier(pl.LightningModule):
     def __init__(self, embeddings, encoder=None, freeze=True):
@@ -47,8 +52,10 @@ class InferenceClassifier(pl.LightningModule):
         )
     
     def forward(self, x):
-        print("forward return shape=", self.embeddings(x).size())
-        return self.embeddings(x)
+        x = self.embeddings(x)
+        print("forward classifier return shape=", x.size())
+        x = self.encoder(x)
+        return x
     
     def training_step(self, batch, batch_idx):
         self.forward(batch.premise)
@@ -60,7 +67,10 @@ class InferenceClassifier(pl.LightningModule):
 data_module = SNLIDataModule(data_dir="./data", max_vectors=10000)
 data_module.setup()
 trainer = pl.Trainer()
-model = InferenceClassifier(data_module.glove_embeddings())
+
+encoder = AWEModel()
+
+model = InferenceClassifier(data_module.glove_embeddings(), encoder)
 trainer.fit(model, data_module)
 
 

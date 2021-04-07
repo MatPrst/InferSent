@@ -74,6 +74,23 @@ class InferenceClassifier(pl.LightningModule):
         out = self.classifier(combination_repr)
         return nn.functional.cross_entropy(out, batch.label)
     
+    def validation_step(self, batch, batch_idx):
+        premise_repr = self.forward(batch.premise)
+        hypothesis_repr = self.forward(batch.hypothesis) # B x 300
+
+        combination_repr = torch.cat(
+            (
+                premise_repr, 
+                hypothesis_repr, 
+                torch.abs(premise_repr - hypothesis_repr), 
+                premise_repr * hypothesis_repr
+            ),
+            dim=1
+        )
+
+        out = self.classifier(combination_repr)
+        self.log("val_loss", nn.functional.cross_entropy(out, batch.label))
+    
     def configure_optimizers(self):
         return torch.optim.SGD(self.parameters(), lr=0.1)
 

@@ -41,6 +41,17 @@ class AWEModel(nn.Module):
         # B x S x 300
         return x.mean(dim=1)
 
+class EarlyStoppingLR(pl.callbacks.base.Callback):
+    def __init__(self, min_lr):
+        self.min_lr = min_lr
+    
+    def on_epoch_start(self, trainer, pl_module):
+        current_lr = trainer.lr_schedulers[0]['scheduler'].optimizer.param_groups[0]['lr']
+        print("LR=", current_lr)
+        if self.min_lr > current_lr:
+            trainer.should_stop = True
+            print(trainer.should_stop)
+
 class InferenceClassifier(pl.LightningModule):
     def __init__(self, embeddings, encoder=None, freeze=True):
         super().__init__()
@@ -116,7 +127,7 @@ class InferenceClassifier(pl.LightningModule):
         loss = nn.functional.cross_entropy(out, batch.label)
         acc = (out.argmax(dim=-1) == batch.label).float().mean()
         self.log("test_acc", acc)
-    
+        
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(self.parameters(), lr=0.1)
         scheduler = torch.optim.lr_scheduler.MultiplicativeLR(optimizer, lambda epoch: 0.99, verbose=True)
@@ -125,11 +136,12 @@ class InferenceClassifier(pl.LightningModule):
 pl.seed_everything(42)
 data_module = SNLIDataModule(data_dir="./data", max_vectors=10000)
 data_module.setup()
-trainer = pl.Trainer(gpus=1, max_epochs=3)
+early_stop_lr = EarlyStoppingLR(min_lr=0.099)
+trainer = pl.Trainer(gpus=1, max_epochs=5, callbacks=[early_stop_lr])
 
 encoder = AWEModel()
 
 model = InferenceClassifier(data_module.glove_embeddings(), encoder)
 trainer.fit(model, data_module)
-
+trainer.test(model, datamodule=data_module)
 

@@ -41,6 +41,24 @@ class AWEModel(nn.Module):
         # B x S x 300
         return x.mean(dim=1)
 
+class LSTMModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.input_dim = 300
+        self.hidden_dim = 300
+        self.lstm = nn.LSTM(
+            input_size=300,
+            hidden_size=300,
+        )
+    
+    def forward(self, x):
+        # B x S x 300
+        x = x.permute(1, 0, 2)
+        h_t = torch.zeros(1, x.shape[1], self.hidden_dim).to("cuda")
+        c_t = torch.zeros(1, x.shape[1], self.hidden_dim).to("cuda")
+        _, (h_t, c_t) = self.lstm(x, (h_t, c_t))
+        return h_t.squeeze()
+
 class EarlyStoppingLR(pl.callbacks.base.Callback):
     def __init__(self, min_lr):
         self.min_lr = min_lr
@@ -136,10 +154,11 @@ class InferenceClassifier(pl.LightningModule):
 pl.seed_everything(42)
 data_module = SNLIDataModule(data_dir="./data", max_vectors=10000)
 data_module.setup()
-early_stop_lr = EarlyStoppingLR(min_lr=0.099)
+early_stop_lr = EarlyStoppingLR(min_lr=1e-5)
 trainer = pl.Trainer(gpus=1, max_epochs=5, callbacks=[early_stop_lr])
 
-encoder = AWEModel()
+# encoder = AWEModel()
+encoder = LSTMModel()
 
 model = InferenceClassifier(data_module.glove_embeddings(), encoder)
 trainer.fit(model, data_module)

@@ -5,7 +5,7 @@ import torch.nn as nn
 import argparse
 
 from dataset import SNLIDataModule
-from models import InferSent, AWEModel, LSTMModel
+from models import InferSent, AWEModel, LSTMModel, BiLSTMModel
 from utils import EarlyStoppingLR
 
 def get_encoder(config):
@@ -14,6 +14,8 @@ def get_encoder(config):
         config.lstm_hidden_dim = config.glove_dim
     elif config.encoder == "lstm":
         encoder = LSTMModel
+    elif config.encoder == "bilstm":
+        encoder = BiLSTMModel
     else:
         assert True, f"{config.encoder} encoder not supported"
     return encoder(config)
@@ -42,7 +44,7 @@ if __name__ == "__main__":
         gpus=1 if config.cuda else 0, 
         max_epochs=config.max_epochs, 
         callbacks=[early_stop_lr],
-        limit_train_batches=.05)
+        limit_train_batches=1.0)
 
     encoder = get_encoder(config)
 

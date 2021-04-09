@@ -8,7 +8,7 @@ class InferSent(pl.LightningModule):
         self.embeddings = nn.Embedding.from_pretrained(embeddings, freeze=True)
         self.encoder = encoder
         self.classifier = nn.Sequential(
-            nn.Linear(in_features=4*config.lstm_hidden_dim, out_features=config.classifier_hidden_dim),
+            nn.Linear(in_features=4*self.encoder.output_dim, out_features=config.classifier_hidden_dim),
             nn.Linear(in_features=config.classifier_hidden_dim, out_features=3),
             nn.Softmax(dim=1)
         )
@@ -90,10 +90,15 @@ class InferSent(pl.LightningModule):
 class AWEModel(nn.Module):
     def __init__(self, config):
         super().__init__()
+        self.glove_dim = config.glove_dim
     
     def forward(self, x):
-        # B x S x 300
+        # batch x seq x 300
         return x.mean(dim=1)
+    
+    @property
+    def output_dim(self):
+        return self.glove_dim
 
 class LSTMModel(nn.Module):
     def __init__(self, config):
@@ -106,9 +111,38 @@ class LSTMModel(nn.Module):
         )
     
     def forward(self, x):
-        # B x S x 300
-        x = x.permute(1, 0, 2) # S x B x 300
+        # batch x seq x hidden_dim
+        x = x.permute(1, 0, 2) # batch x seq x hidden_dim
         h_t = torch.zeros(1, x.shape[1], self.hidden_dim).to("cuda")
         c_t = torch.zeros(1, x.shape[1], self.hidden_dim).to("cuda")
         _, (h_t, c_t) = self.lstm(x, (h_t, c_t))
         return h_t.squeeze()
+    
+    @property
+    def output_dim(self):
+        return self.hidden_dim
+
+class BiLSTMModel(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.input_dim = config.glove_dim
+        self.hidden_dim = config.lstm_hidden_dim
+        self.lstm = nn.LSTM(
+            input_size=self.input_dim,
+            hidden_size=self.hidden_dim,
+            bidirectional=True
+        )
+    
+    def forward(self, x):
+        # batch x seq x hidden_dim
+        batch_size, _, _ = x.size()
+        x = x.permute(1, 0, 2) # batch x seq x hidden_dim
+        h_t = torch.zeros(2, x.shape[1], self.hidden_dim).to("cuda")
+        c_t = torch.zeros(2, x.shape[1], self.hidden_dim).to("cuda")
+        _, (h_t, c_t) = self.lstm(x, (h_t, c_t))
+        out = h_t.permute(1, 0, 2).reshape(batch_size, -1)
+        return out
+    
+    @property
+    def output_dim(self):
+        return 2 * self.hidden_dim

@@ -2,13 +2,14 @@ import pytorch_lightning as pl
 import torchtext
 import torch
 import torch.nn as nn
+import argparse
 
 class SNLIDataModule(pl.LightningDataModule):
-    def __init__(self, data_dir, batch_size=32, max_vectors=None):
+    def __init__(self, config):
         super().__init__()
-        self.data_dir = data_dir
-        self.batch_size = batch_size
-        self.max_vectors=max_vectors
+        self.data_dir = config.data_dir
+        self.batch_size = config.batch_size
+        self.max_vectors = config.glove_max_vectors
 
     def setup(self, stage=None):
         self.text_field = torchtext.legacy.data.Field(lower=True, include_lengths=False, batch_first=True)
@@ -34,7 +35,7 @@ class SNLIDataModule(pl.LightningDataModule):
         return self.text_field.vocab.vectors
 
 class AWEModel(nn.Module):
-    def __init__(self):
+    def __init__(self, config):
         super().__init__()
     
     def forward(self, x):
@@ -42,13 +43,13 @@ class AWEModel(nn.Module):
         return x.mean(dim=1)
 
 class LSTMModel(nn.Module):
-    def __init__(self):
+    def __init__(self, config):
         super().__init__()
-        self.input_dim = 300
-        self.hidden_dim = 300
+        self.input_dim = config.glove_dim
+        self.hidden_dim = config.lstm_hidden_dim
         self.lstm = nn.LSTM(
-            input_size=300,
-            hidden_size=300,
+            input_size=self.input_dim,
+            hidden_size=self.hidden_dim,
         )
     
     def forward(self, x):
@@ -68,16 +69,17 @@ class EarlyStoppingLR(pl.callbacks.base.Callback):
         if self.min_lr > current_lr:
             trainer.should_stop = True
 
-class InferenceClassifier(pl.LightningModule):
-    def __init__(self, embeddings, encoder=None, freeze=True):
+class InferSent(pl.LightningModule):
+    def __init__(self, embeddings, encoder, config):
         super().__init__()
-        self.embeddings = nn.Embedding.from_pretrained(embeddings, freeze=freeze)
+        self.embeddings = nn.Embedding.from_pretrained(embeddings, freeze=True)
         self.encoder = encoder
         self.classifier = nn.Sequential(
-            nn.Linear(in_features=4*300, out_features=512),
-            nn.Linear(in_features=512, out_features=3),
+            nn.Linear(in_features=4*config.lstm_hidden_dim, out_features=config.classifier_hidden_dim),
+            nn.Linear(in_features=config.classifier_hidden_dim, out_features=3),
             nn.Softmax(dim=1)
         )
+        print(self)
     
     def forward(self, x):
         x = self.embeddings(x)
@@ -152,20 +154,44 @@ class InferenceClassifier(pl.LightningModule):
             'scheduler': scheduler_plateau, 'monitor': 'val_acc'
         }]
 
-pl.seed_everything(42)
-data_module = SNLIDataModule(data_dir="./data", max_vectors=10000)
+def get_encoder(config):
+    if config.encoder == "awe":
+        encoder = AWEModel
+        config.lstm_hidden_dim = config.glove_dim
+    elif config.encoder == "lstm":
+        encoder = LSTMModel
+    else:
+        assert True, f"{config.encoder} encoder not supported"
+    return encoder(config)
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--seed", type=int, default=42)
+parser.add_argument("--data_dir", type=str, default="./data", help="Directory where the data is stored (or will be downloaded).")
+parser.add_argument("--glove_max_vectors", type=int, default=None, help="Vocabulary size, if None include all words.")
+parser.add_argument("--glove_dim", type=int, default=300, help="GloVe embedding dimension.")
+parser.add_argument("--batch_size", type=int, default=32, help="Number of sentences in a single batch.")
+parser.add_argument("--cuda", action="store_true", help="Run training on single GPU, if not set run on CPU.")
+parser.add_argument("--encoder", type=str, default="awe", choices=["awe", "lstm", "bilstm", "bilstm-max"], help="Model of encoder to use.")
+parser.add_argument("--max_epochs", type=int, default=None, help="Max number of epochs to train for. Training is stopped if the max number of epochs is reached or ealy stopping is triggered.")
+parser.add_argument("--lstm_hidden_dim", type=int, default=2048, help="Output dimension of the encoder. If encoder is AWE, then this will be set to glove_dim.")
+parser.add_argument("--classifier_hidden_dim", type=int, default=512)
+# parser.add_argument("--early_stopping_lr", type=float, default=1e-5, help=)
+
+config = parser.parse_args()
+
+pl.seed_everything(config.seed)
+data_module = SNLIDataModule(config)
 data_module.setup()
 early_stop_lr = EarlyStoppingLR(min_lr=1e-5)
 trainer = pl.Trainer(
-    gpus=1, 
-    max_epochs=10, 
+    gpus=1 if config.cuda else 0, 
+    max_epochs=config.max_epochs, 
     callbacks=[early_stop_lr],
-    limit_train_batches=1.0)
+    limit_train_batches=.05)
 
-encoder = AWEModel()
-# encoder = LSTMModel()
+encoder = get_encoder(config)
 
-model = InferenceClassifier(data_module.glove_embeddings(), encoder)
+model = InferSent(data_module.glove_embeddings(), encoder, config)
 trainer.fit(model, data_module)
 trainer.test(model, datamodule=data_module)
 

@@ -5,7 +5,7 @@ import torch.nn as nn
 import argparse
 
 from dataset import SNLIDataModule
-from models import InferSent, AWEModel, LSTMModel, BiLSTMModel
+from models import InferSent, AWEModel, LSTMModel, BiLSTMModel, MaxBiLSTMModel
 from utils import EarlyStoppingLR
 
 def get_encoder(config):
@@ -16,6 +16,8 @@ def get_encoder(config):
         encoder = LSTMModel
     elif config.encoder == "bilstm":
         encoder = BiLSTMModel
+    elif config.encoder == "bilstm-max":
+        encoder = MaxBiLSTMModel
     else:
         assert True, f"{config.encoder} encoder not supported"
     return encoder(config)

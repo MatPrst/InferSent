@@ -146,3 +146,28 @@ class BiLSTMModel(nn.Module):
     @property
     def output_dim(self):
         return 2 * self.hidden_dim
+
+class MaxBiLSTMModel(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.input_dim = config.glove_dim
+        self.hidden_dim = config.lstm_hidden_dim
+        self.lstm = nn.LSTM(
+            input_size=self.input_dim,
+            hidden_size=self.hidden_dim,
+            bidirectional=True
+        )
+    
+    def forward(self, x):
+        # batch x seq x hidden_dim
+        batch_size, _, _ = x.size()
+        x = x.permute(1, 0, 2) # batch x seq x hidden_dim
+        h_t = torch.zeros(2, x.shape[1], self.hidden_dim).to("cuda")
+        c_t = torch.zeros(2, x.shape[1], self.hidden_dim).to("cuda")
+        h, (h_t, c_t) = self.lstm(x, (h_t, c_t))
+        out, _ = torch.max(h.permute(1, 0, 2), dim=1)
+        return out
+    
+    @property
+    def output_dim(self):
+        return 2 * self.hidden_dim

@@ -32,6 +32,7 @@ if __name__ == "__main__":
     parser.add_argument("--max_epochs", type=int, default=None, help="Max number of epochs to train for. Training is stopped if the max number of epochs is reached or ealy stopping is triggered.")
     parser.add_argument("--lstm_hidden_dim", type=int, default=2048, help="Output dimension of the encoder. If encoder is AWE, then this will be set to glove_dim.")
     parser.add_argument("--classifier_hidden_dim", type=int, default=512)
+    parser.add_argument("--debug", action="store_true", help="Only use 1\% of the training data.")
     # parser.add_argument("--early_stopping_lr", type=float, default=1e-5, help=)
 
     config = parser.parse_args()
@@ -44,7 +45,7 @@ if __name__ == "__main__":
         gpus=1 if config.cuda else 0, 
         max_epochs=config.max_epochs, 
         callbacks=[early_stop_lr],
-        limit_train_batches=1.0)
+        limit_train_batches=0.01 if config.debug else 1.0)
 
     encoder = get_encoder(config)
 

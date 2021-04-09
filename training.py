@@ -53,7 +53,7 @@ class LSTMModel(nn.Module):
     
     def forward(self, x):
         # B x S x 300
-        x = x.permute(1, 0, 2)
+        x = x.permute(1, 0, 2) # S x B x 300
         h_t = torch.zeros(1, x.shape[1], self.hidden_dim).to("cuda")
         c_t = torch.zeros(1, x.shape[1], self.hidden_dim).to("cuda")
         _, (h_t, c_t) = self.lstm(x, (h_t, c_t))
@@ -65,10 +65,8 @@ class EarlyStoppingLR(pl.callbacks.base.Callback):
     
     def on_epoch_start(self, trainer, pl_module):
         current_lr = trainer.lr_schedulers[0]['scheduler'].optimizer.param_groups[0]['lr']
-        print("LR=", current_lr)
         if self.min_lr > current_lr:
             trainer.should_stop = True
-            print(trainer.should_stop)
 
 class InferenceClassifier(pl.LightningModule):
     def __init__(self, embeddings, encoder=None, freeze=True):
@@ -148,17 +146,24 @@ class InferenceClassifier(pl.LightningModule):
         
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(self.parameters(), lr=0.1)
-        scheduler = torch.optim.lr_scheduler.MultiplicativeLR(optimizer, lambda epoch: 0.99, verbose=True)
-        return [optimizer], [scheduler]
+        scheduler_weight_decay = torch.optim.lr_scheduler.MultiplicativeLR(optimizer, lambda epoch: 0.99, verbose=True)
+        scheduler_plateau = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.2, patience=0, verbose=True)
+        return [optimizer], [scheduler_weight_decay, {
+            'scheduler': scheduler_plateau, 'monitor': 'val_acc'
+        }]
 
 pl.seed_everything(42)
 data_module = SNLIDataModule(data_dir="./data", max_vectors=10000)
 data_module.setup()
 early_stop_lr = EarlyStoppingLR(min_lr=1e-5)
-trainer = pl.Trainer(gpus=1, max_epochs=5, callbacks=[early_stop_lr])
+trainer = pl.Trainer(
+    gpus=1, 
+    max_epochs=10, 
+    callbacks=[early_stop_lr],
+    limit_train_batches=1.0)
 
-# encoder = AWEModel()
-encoder = LSTMModel()
+encoder = AWEModel()
+# encoder = LSTMModel()
 
 model = InferenceClassifier(data_module.glove_embeddings(), encoder)
 trainer.fit(model, data_module)

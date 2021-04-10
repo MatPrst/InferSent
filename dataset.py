@@ -9,7 +9,7 @@ class SNLIDataModule(pl.LightningDataModule):
         self.max_vectors = config.glove_max_vectors
 
     def setup(self, stage=None):
-        self.text_field = torchtext.legacy.data.Field(lower=True, include_lengths=True, batch_first=True)
+        self.text_field = torchtext.legacy.data.Field(lower=True, include_lengths=True, batch_first=True, tokenize="toktok")
         self.label_field = torchtext.legacy.data.Field(sequential=False)
 
         self.snli_train, self.snli_val, self.snli_test = torchtext.legacy.datasets.SNLI.splits(self.text_field, self.label_field, root=self.data_dir)

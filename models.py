@@ -130,11 +130,21 @@ class LSTMModel(nn.Module):
         )
     
     def forward(self, x):
+        sequences, lengths = x
+        batch_size, _, _ = sequences.size()
+        # print(sequences.size())
+        # print(lengths.size())
+        sequences = sequences.permute(1, 0, 2)
+        pack = torch.nn.utils.rnn.pack_padded_sequence(sequences, lengths.to("cpu"), enforce_sorted=False)
+        # print(pack)
+        # print(pack.size())
         # batch x seq x hidden_dim
-        x = x.permute(1, 0, 2) # batch x seq x hidden_dim
-        h_t = torch.zeros(1, x.shape[1], self.hidden_dim).to("cuda")
-        c_t = torch.zeros(1, x.shape[1], self.hidden_dim).to("cuda")
-        _, (h_t, c_t) = self.lstm(x, (h_t, c_t))
+        # x = x.permute(1, 0, 2) # batch x seq x hidden_dim
+        # h_t = torch.zeros(1, x.shape[1], self.hidden_dim).to("cuda")
+        # c_t = torch.zeros(1, x.shape[1], self.hidden_dim).to("cuda")
+        h_t = torch.zeros(1, batch_size, self.hidden_dim).to("cuda")
+        c_t = torch.zeros(1, batch_size, self.hidden_dim).to("cuda")
+        _, (h_t, c_t) = self.lstm(sequences, (h_t, c_t))
         return h_t.squeeze()
     
     @property

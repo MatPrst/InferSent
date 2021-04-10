@@ -164,11 +164,22 @@ class BiLSTMModel(nn.Module):
     
     def forward(self, x):
         # batch x seq x hidden_dim
-        batch_size, _, _ = x.size()
-        x = x.permute(1, 0, 2) # batch x seq x hidden_dim
-        h_t = torch.zeros(2, x.shape[1], self.hidden_dim).to("cuda")
-        c_t = torch.zeros(2, x.shape[1], self.hidden_dim).to("cuda")
-        _, (h_t, c_t) = self.lstm(x, (h_t, c_t))
+        # batch_size, _, _ = x.size()
+        # x = x.permute(1, 0, 2) # batch x seq x hidden_dim
+        # h_t = torch.zeros(2, x.shape[1], self.hidden_dim).to("cuda")
+        # c_t = torch.zeros(2, x.shape[1], self.hidden_dim).to("cuda")
+        # _, (h_t, c_t) = self.lstm(x, (h_t, c_t))
+
+        sequences, lengths = x
+        batch_size, _, _ = sequences.size()
+
+        sequences = sequences.permute(1, 0, 2)
+        pack = torch.nn.utils.rnn.pack_padded_sequence(sequences, lengths.to("cpu"), enforce_sorted=False)
+
+        h_t = torch.zeros(2, batch_size, self.hidden_dim).to("cuda")
+        c_t = torch.zeros(2, batch_size, self.hidden_dim).to("cuda")
+        _, (h_t, c_t) = self.lstm(sequences, (h_t, c_t))
+        
         out = h_t.permute(1, 0, 2).reshape(batch_size, -1)
         return out
     

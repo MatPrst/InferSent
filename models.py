@@ -144,7 +144,7 @@ class LSTMModel(nn.Module):
         # c_t = torch.zeros(1, x.shape[1], self.hidden_dim).to("cuda")
         h_t = torch.zeros(1, batch_size, self.hidden_dim).to("cuda")
         c_t = torch.zeros(1, batch_size, self.hidden_dim).to("cuda")
-        _, (h_t, c_t) = self.lstm(sequences, (h_t, c_t))
+        _, (h_t, c_t) = self.lstm(pack, (h_t, c_t))
         return h_t.squeeze()
     
     @property
@@ -178,7 +178,7 @@ class BiLSTMModel(nn.Module):
 
         h_t = torch.zeros(2, batch_size, self.hidden_dim).to("cuda")
         c_t = torch.zeros(2, batch_size, self.hidden_dim).to("cuda")
-        _, (h_t, c_t) = self.lstm(sequences, (h_t, c_t))
+        _, (h_t, c_t) = self.lstm(pack, (h_t, c_t))
 
         out = h_t.permute(1, 0, 2).reshape(batch_size, -1)
         return out
@@ -214,7 +214,8 @@ class MaxBiLSTMModel(nn.Module):
 
         h_t = torch.zeros(2, batch_size, self.hidden_dim).to("cuda")
         c_t = torch.zeros(2, batch_size, self.hidden_dim).to("cuda")
-        h, (h_t, c_t) = self.lstm(sequences, (h_t, c_t))
+        h, (h_t, c_t) = self.lstm(pack, (h_t, c_t))
+        h, _ = torch.nn.utils.rnn.pad_packed_sequence(h, batch_first=False, padding_value=-float('inf'))
         out, _ = torch.max(h.permute(1, 0, 2), dim=1)
         return out
     

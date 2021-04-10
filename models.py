@@ -15,8 +15,12 @@ class InferSent(pl.LightningModule):
         print(self)
     
     def forward(self, x):
-        x = self.embeddings(x)
-        x = self.encoder(x)
+        sequences, lengths = x
+        # print(sequences)
+        # print(lengths)
+        sequences = self.embeddings(sequences)
+        # print(sequences.size())
+        x = self.encoder((sequences, lengths))
         return x
     
     def training_step(self, batch, batch_idx):
@@ -93,7 +97,22 @@ class AWEModel(nn.Module):
         self.glove_dim = config.glove_dim
     
     def forward(self, x):
+        sequences, lengths = x
+        batch_size, _, _ = sequences.size()
+        # print(sequences.size())
+        out = torch.zeros((batch_size, self.glove_dim), device=sequences.device)
+        # print("out size=", out.size())
+        for i, (seq, length) in enumerate(zip(sequences, lengths)):
+            # print(seq.size())
+            # print(seq[:length].size())
+            # print("mean dim=", seq[:length].mean(dim=0).size())
+            out[i,:] = seq[:length].mean(dim=0)
+            # print(out[i])
+
+
         # batch x seq x 300
+        # print(out.size())
+        return out
         return x.mean(dim=1)
     
     @property

@@ -9,7 +9,7 @@ class SNLIDataModule(pl.LightningDataModule):
         self.max_vectors = config.glove_max_vectors
 
     def setup(self, stage=None):
-        self.text_field = torchtext.legacy.data.Field(lower=True, include_lengths=False, batch_first=True)
+        self.text_field = torchtext.legacy.data.Field(lower=True, include_lengths=True, batch_first=True)
         self.label_field = torchtext.legacy.data.Field(sequential=False)
 
         self.snli_train, self.snli_val, self.snli_test = torchtext.legacy.datasets.SNLI.splits(self.text_field, self.label_field, root=self.data_dir)
@@ -17,7 +17,7 @@ class SNLIDataModule(pl.LightningDataModule):
         self.label_field.build_vocab(self.snli_train, specials_first=False)
 
         self.train_iter, self.val_iter, self.test_iter = torchtext.legacy.data.BucketIterator.splits(
-            (self.snli_train, self.snli_val, self.snli_test), batch_size=self.batch_size, device="cuda")
+            (self.snli_train, self.snli_val, self.snli_test), batch_size=self.batch_size, device="cuda", shuffle=True)
     
     def train_dataloader(self):
         return self.train_iter

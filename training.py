@@ -7,6 +7,7 @@ import argparse
 from dataset import SNLIDataModule
 from models import InferSent, AWEModel, LSTMModel, BiLSTMModel, MaxBiLSTMModel
 from utils import EarlyStoppingLR
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 def get_encoder(config):
     if config.encoder == "awe":
@@ -43,11 +44,28 @@ if __name__ == "__main__":
     data_module = SNLIDataModule(config)
     data_module.setup()
     early_stop_lr = EarlyStoppingLR(min_lr=1e-5)
+
+
+
+    checkpoint_callback = ModelCheckpoint(
+        monitor='val_acc',
+        filename='checkpoint-{epoch:02d}-{val_acc:.2f}',
+        save_top_k=1,
+        mode='max',
+    )
+
+    logger = pl.loggers.TensorBoardLogger(
+                save_dir='./TBlogger',
+                name=config.encoder
+            )
+
     trainer = pl.Trainer(
         gpus=1 if config.cuda else 0, 
         max_epochs=config.max_epochs, 
-        callbacks=[early_stop_lr],
-        limit_train_batches=0.01 if config.debug else 1.0)
+        callbacks=[early_stop_lr, checkpoint_callback],
+        limit_train_batches=0.01 if config.debug else 1.0,
+        default_root_dir="./testing",
+        logger=logger)
 
     encoder = get_encoder(config)
 

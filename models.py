@@ -16,10 +16,7 @@ class InferSent(pl.LightningModule):
     
     def forward(self, x):
         sequences, lengths = x
-        # print(sequences)
-        # print(lengths)
         sequences = self.embeddings(sequences)
-        # print(sequences.size())
         x = self.encoder((sequences, lengths))
         return x
     
@@ -99,21 +96,12 @@ class AWEModel(nn.Module):
     def forward(self, x):
         sequences, lengths = x
         batch_size, _, _ = sequences.size()
-        # print(sequences.size())
         out = torch.zeros((batch_size, self.glove_dim), device=sequences.device)
-        # print("out size=", out.size())
+
         for i, (seq, length) in enumerate(zip(sequences, lengths)):
-            # print(seq.size())
-            # print(seq[:length].size())
-            # print("mean dim=", seq[:length].mean(dim=0).size())
             out[i,:] = seq[:length].mean(dim=0)
-            # print(out[i])
 
-
-        # batch x seq x 300
-        # print(out.size())
         return out
-        return x.mean(dim=1)
     
     @property
     def output_dim(self):
@@ -132,19 +120,14 @@ class LSTMModel(nn.Module):
     def forward(self, x):
         sequences, lengths = x
         batch_size, _, _ = sequences.size()
-        # print(sequences.size())
-        # print(lengths.size())
+
         sequences = sequences.permute(1, 0, 2)
         pack = torch.nn.utils.rnn.pack_padded_sequence(sequences, lengths.to("cpu"), enforce_sorted=False)
-        # print(pack)
-        # print(pack.size())
-        # batch x seq x hidden_dim
-        # x = x.permute(1, 0, 2) # batch x seq x hidden_dim
-        # h_t = torch.zeros(1, x.shape[1], self.hidden_dim).to("cuda")
-        # c_t = torch.zeros(1, x.shape[1], self.hidden_dim).to("cuda")
+
         h_t = torch.zeros(1, batch_size, self.hidden_dim).to("cuda")
         c_t = torch.zeros(1, batch_size, self.hidden_dim).to("cuda")
         _, (h_t, c_t) = self.lstm(pack, (h_t, c_t))
+
         return h_t.squeeze()
     
     @property
@@ -163,13 +146,6 @@ class BiLSTMModel(nn.Module):
         )
     
     def forward(self, x):
-        # batch x seq x hidden_dim
-        # batch_size, _, _ = x.size()
-        # x = x.permute(1, 0, 2) # batch x seq x hidden_dim
-        # h_t = torch.zeros(2, x.shape[1], self.hidden_dim).to("cuda")
-        # c_t = torch.zeros(2, x.shape[1], self.hidden_dim).to("cuda")
-        # _, (h_t, c_t) = self.lstm(x, (h_t, c_t))
-
         sequences, lengths = x
         batch_size, _, _ = sequences.size()
 
@@ -199,13 +175,6 @@ class MaxBiLSTMModel(nn.Module):
         )
     
     def forward(self, x):
-        # batch x seq x hidden_dim
-        # batch_size, _, _ = x.size()
-        # x = x.permute(1, 0, 2) # batch x seq x hidden_dim
-        # h_t = torch.zeros(2, x.shape[1], self.hidden_dim).to("cuda")
-        # c_t = torch.zeros(2, x.shape[1], self.hidden_dim).to("cuda")
-        # h, (h_t, c_t) = self.lstm(x, (h_t, c_t))
-        # out, _ = torch.max(h.permute(1, 0, 2), dim=1)
         sequences, lengths = x
         batch_size, _, _ = sequences.size()
 
@@ -215,6 +184,7 @@ class MaxBiLSTMModel(nn.Module):
         h_t = torch.zeros(2, batch_size, self.hidden_dim).to("cuda")
         c_t = torch.zeros(2, batch_size, self.hidden_dim).to("cuda")
         h, (h_t, c_t) = self.lstm(pack, (h_t, c_t))
+
         h, _ = torch.nn.utils.rnn.pad_packed_sequence(h, batch_first=False, padding_value=-float('inf'))
         out, _ = torch.max(h.permute(1, 0, 2), dim=1)
         return out

@@ -50,39 +50,12 @@ if __name__ == "__main__":
     pl.seed_everything(config.seed)
     data_module = SNLIDataModule(config)
     data_module.setup()
-    # early_stop_lr = EarlyStoppingLR(min_lr=1e-5)
-
-
-
-    # checkpoint_callback = ModelCheckpoint(
-    #     monitor='val_acc',
-    #     filename='checkpoint-{epoch:02d}-{val_acc:.2f}',
-    #     save_top_k=1,
-    #     mode='max',
-    # )
-
-    # logger = pl.loggers.TensorBoardLogger(
-    #             save_dir='./TBlogger',
-    #             name=config.encoder
-    #         )
-
-    trainer = pl.Trainer(
-        gpus=1 if config.cuda else 0, 
-        # max_epochs=config.max_epochs, 
-        # callbacks=[early_stop_lr, checkpoint_callback],
-        # limit_train_batches=0.01 if config.debug else 1.0,
-        # default_root_dir="./testing",
-        # logger=logger
-        )
 
     encoder = get_encoder(config)
-
-
 
     model = InferSent.load_from_checkpoint(config.checkpoint, embeddings=data_module.glove_embeddings(), encoder=encoder, config=config)
     model.to("cuda")
     model.eval()
-    # trainer.test(model, datamodule=data_module)
 
     PATH_TO_SENTEVAL = '../SentEval'
     PATH_TO_DATA = '../SentEval/data'
@@ -90,31 +63,50 @@ if __name__ == "__main__":
     import senteval
 
     def prepare(params, samples):
-        print(params)
-        _, params.word2id = create_dictionary(samples)
-        params.word_vec = get_wordvec(PATH_TO_VEC, params.word2id)
-        params.wvec_dim = 300
+        data_module = SNLIDataModule(config)
+        data_module.setup()
+        params.stoi = data_module.text_field.vocab.stoi
         return
     
+    def batcher(params, batch):
+        batch = [sent if sent != [] else ['.'] for sent in batch]
+        max_length = max(len(sent) for sent in batch)
+        id_sentences = []
+        lengths = []
+        for sent in batch:
+            id_sent = []
+            lengths.append(len(sent))
+            for word in sent:
+                id_sent.append(params.stoi[word])
+            
+            while len(id_sent) < max_length:
+                id_sent.append(1) # pad
+            
+            id_sentences.append(id_sent)
+        id_sentences = torch.IntTensor(id_sentences).to("cuda")
+        lengths = torch.IntTensor(lengths).to("cuda")
+
+        embeddings = model((id_sentences, lengths))
+        return embeddings.detach().cpu().numpy()
+
+
     sentences = [
         ['the', 'rock', 'is', 'destined', 'to', 'be', 'the', '21st', 'century', "'s", 'new', '``', 'conan', '``', 'and', 'that', 'he', "'s", 'going', 'to', 'make', 'a', 'splash', 'even', 'greater', 'than', 'arnold', 'schwarzenegger', ',', 'jean-claud', 'van', 'damme', 'or', 'steven', 'segal', '.'],
+        ['I', 'test', 'if', 'it', 'works', '.']
     ]
-    lengths = [len(s) for s in sentences]
 
-    stoi = data_module.text_field.vocab.stoi
-    id_sentences = []
-    for sentence in sentences:
-        id_sentence = []
-        for word in sentence:
-            id_sentence.append(stoi[word])
-        id_sentences.append(id_sentence)
-    
-    print(id_sentences)
-    id_sent_tensor = torch.IntTensor(id_sentences).to("cuda")
-    len_tensor = torch.IntTensor(lengths).to("cuda")
-    print(id_sent_tensor)
-    print(len_tensor)
+    params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 2}
+    params_senteval['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
+                                    'tenacity': 3, 'epoch_size': 2}
 
-    out = model((id_sent_tensor, len_tensor))
-    print(out)
+    # Set up logger
+    logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
+    se = senteval.engine.SE(params_senteval, batcher, prepare)
+
+    transfer_tasks = ['MR', 'CR', 'MPQA', 'SUBJ', 'SST2', 'TREC',
+                      'MRPC', 'SICKEntailment', 'STS14']
+
+    results = se.eval(transfer_tasks)
+
+    print(results)

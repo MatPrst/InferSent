@@ -23,7 +23,7 @@ conda env create -f env.yml
 
 ## Training
 
-To train the models from scratch, you can use [training.py](training.py)
+To train the models from scratch, you can use [training.py](training.py). The dataset used to train the models is the Stanford Natural Language Inference ([SNLI](https://nlp.stanford.edu/projects/snli/)) Corpus and will be downloaded to the specified directory. Additionally, the Global Vectors for Word Representation ([GloVe](https://nlp.stanford.edu/projects/glove/)) are used and will be downloaded to the same directory.
 
     .
     -h, --help            show this help message and exit

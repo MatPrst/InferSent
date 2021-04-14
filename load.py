@@ -89,23 +89,17 @@ if __name__ == "__main__":
         embeddings = model((id_sentences, lengths))
         return embeddings.detach().cpu().numpy()
 
-
-    sentences = [
-        ['the', 'rock', 'is', 'destined', 'to', 'be', 'the', '21st', 'century', "'s", 'new', '``', 'conan', '``', 'and', 'that', 'he', "'s", 'going', 'to', 'make', 'a', 'splash', 'even', 'greater', 'than', 'arnold', 'schwarzenegger', ',', 'jean-claud', 'van', 'damme', 'or', 'steven', 'segal', '.'],
-        ['I', 'test', 'if', 'it', 'works', '.']
-    ]
-
-    params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 2}
-    params_senteval['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
-                                    'tenacity': 3, 'epoch_size': 2}
+    params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10}
+    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': 64,
+                                    'tenacity': 5, 'epoch_size': 4}
 
     # Set up logger
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
     se = senteval.engine.SE(params_senteval, batcher, prepare)
 
-    transfer_tasks = ['MR', 'CR', 'MPQA', 'SUBJ', 'SST2', 'TREC',
-                      'MRPC', 'SICKEntailment', 'STS14']
+    transfer_tasks = ['MR', 'CR', 'SUBJ', 'MPQA', 'SST2', 'TREC',
+                      'MRPC', 'SICKRelatedness', 'SICKEntailment', 'STS14']
 
     results = se.eval(transfer_tasks)
 

@@ -23,28 +23,29 @@ conda env create -f env.yml
 
 ## Training
 
-To train the models from scratch, you can use [training.py](training.py)
+To train the models from scratch, you can use [training.py](training.py). The dataset used to train the models is the Stanford Natural Language Inference ([SNLI](https://nlp.stanford.edu/projects/snli/)) Corpus and will be downloaded to the specified directory. Additionally, the Global Vectors for Word Representation ([GloVe](https://nlp.stanford.edu/projects/glove/)) are used and will be downloaded to the same directory.
 
-  -h, --help            show this help message and exit
-  --seed SEED
-  --data_dir DATA_DIR   Directory where the data is stored (or will be downloaded).
-  --glove_max_vectors GLOVE_MAX_VECTORS
+    .
+    -h, --help            show this help message and exit
+    --seed SEED
+    --data_dir DATA_DIR   Directory where the data is stored (or will be downloaded).
+    --glove_max_vectors GLOVE_MAX_VECTORS
                         Vocabulary size, if None include all words.
-  --glove_dim GLOVE_DIM
+    --glove_dim GLOVE_DIM
                         GloVe embedding dimension.
-  --batch_size BATCH_SIZE
+    --batch_size BATCH_SIZE
                         Number of sentences in a single batch.
-  --cuda                Run training on single GPU, if not set run on CPU.
-  --encoder {awe,lstm,bilstm,bilstm-max}
+    --cuda                Run training on single GPU, if not set run on CPU.
+    --encoder {awe,lstm,bilstm,bilstm-max}
                         Model of encoder to use.
-  --max_epochs MAX_EPOCHS
+    --max_epochs MAX_EPOCHS
                         Max number of epochs to train for. Training is stopped if the max
                         number of epochs is reached or ealy stopping is triggered.
-  --lstm_hidden_dim LSTM_HIDDEN_DIM
+    --lstm_hidden_dim LSTM_HIDDEN_DIM
                         Output dimension of the encoder. If encoder is AWE, then this will
                         be set to glove_dim.
-  --classifier_hidden_dim CLASSIFIER_HIDDEN_DIM
-  --debug               Only use 1% of the training data.
+    --classifier_hidden_dim CLASSIFIER_HIDDEN_DIM
+    --debug               Only use 1% of the training data.
 
 ### Average Word Embeddings
 

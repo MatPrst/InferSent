@@ -65,7 +65,8 @@ if __name__ == "__main__":
         callbacks=[early_stop_lr, checkpoint_callback],
         limit_train_batches=0.01 if config.debug else 1.0,
         default_root_dir="./testing",
-        logger=logger)
+        logger=logger,
+        progress_bar_refresh_rate=0)
 
     encoder = get_encoder(config)
 

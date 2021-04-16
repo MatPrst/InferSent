@@ -12,6 +12,7 @@ import argparse
 import pytorch_lightning as pl
 from dataset import SNLIDataModule
 from models import AWEModel, LSTMModel, BiLSTMModel, MaxBiLSTMModel
+from torchtext.data.utils import get_tokenizer
 
 
 
@@ -66,9 +67,18 @@ if __name__ == "__main__":
         data_module = SNLIDataModule(config)
         data_module.setup()
         params.stoi = data_module.text_field.vocab.stoi
+        params.tokenizer = get_tokenizer("toktok")
         return
     
     def batcher(params, batch):
+        # tokenized_batch = []
+        # for sent in batch:
+        #     tokenized_sent = []
+        #     for word in sent:
+        #         for token in params.tokenizer(word):
+        #             tokenized_sent.append(token)
+        #     tokenized_batch.append(tokenized_sent)
+        # batch = tokenized_batch
         batch = [sent if sent != [] else ['.'] for sent in batch]
         max_length = max(len(sent) for sent in batch)
         id_sentences = []
@@ -89,7 +99,7 @@ if __name__ == "__main__":
         embeddings = model((id_sentences, lengths))
         return embeddings.detach().cpu().numpy()
 
-    params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10}
+    params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 2}
     params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': 64,
                                     'tenacity': 5, 'epoch_size': 4}
 

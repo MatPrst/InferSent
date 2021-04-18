@@ -71,6 +71,9 @@ python training.py --encoder bilstm --cuda
 python training.py --encoder bilstm-max --cuda
 ```
 
+## Pretrained models
+The 4 pretrained models can be downloaded via this Google Drive [link](https://drive.google.com/drive/folders/1c8B7BmjDyPEDfZEJkIQqF3T2JPLMMlDa?usp=sharing).
+
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 

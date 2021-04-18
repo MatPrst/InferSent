@@ -71,14 +71,6 @@ if __name__ == "__main__":
         return
     
     def batcher(params, batch):
-        # tokenized_batch = []
-        # for sent in batch:
-        #     tokenized_sent = []
-        #     for word in sent:
-        #         for token in params.tokenizer(word):
-        #             tokenized_sent.append(token)
-        #     tokenized_batch.append(tokenized_sent)
-        # batch = tokenized_batch
         batch = [sent if sent != [] else ['.'] for sent in batch]
         max_length = max(len(sent) for sent in batch)
         id_sentences = []

@@ -18,7 +18,7 @@ conda env create -f env.yml
     ├── models.py               # Pytorch Lightning Module and encoders
     ├── training.py             # Main training script
     ├── utils.py                
-    ├── load.py                 # Evaluate on SentEval benchmark
+    ├── eval.py                 # Evaluate on SentEval benchmark
     └── README.md
 
 ## Training

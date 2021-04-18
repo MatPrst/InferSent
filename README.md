@@ -74,6 +74,13 @@ python training.py --encoder bilstm-max --cuda
 ## Pretrained models
 The 4 pretrained models can be downloaded via this Google Drive [link](https://drive.google.com/drive/folders/1c8B7BmjDyPEDfZEJkIQqF3T2JPLMMlDa?usp=sharing). Download the one you are interested in and place it in the [pretrained](pretrained/) directory to be able to test it using [demo.ipynb](demo.ipynb).
 
+## Evaluation
+To evaluate the model on [SentEval](https://github.com/facebookresearch/SentEval), you can run [eval.py](eval.py)
+
+```bash
+python training.py --encoder bilstm-max --checkpoint path/to/checkpoint
+```
+
 ## Results
 You can open [demo.ipynb](demo.ipynb) to see the results and some comments about them.
 

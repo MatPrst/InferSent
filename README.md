@@ -72,12 +72,15 @@ python training.py --encoder bilstm-max --cuda
 ```
 
 ## Pretrained models
-The 4 pretrained models can be downloaded via this Google Drive [link](https://drive.google.com/drive/folders/1c8B7BmjDyPEDfZEJkIQqF3T2JPLMMlDa?usp=sharing).
+The 4 pretrained models can be downloaded via this Google Drive [link](https://drive.google.com/drive/folders/1c8B7BmjDyPEDfZEJkIQqF3T2JPLMMlDa?usp=sharing). Download the one you are interested in and place it in the [pretrained](pretrained/) directory to be able to test it using [demo.ipynb](demo.ipynb).
 
-## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+## Results
+You can open [demo.ipynb](demo.ipynb) to see the results and some comments about them.
 
-Please make sure to update tests as appropriate.
+| model      | dim  | SNLI-dev | SNLI-test | SentEval-micro | SentEval-macro |
+|------------|------|----------|-----------|----------------|----------------|
+| AWE        | 300  | 65.6     | 65.9      | 81.0           | 78.2           |
+| LSTM       | 2048 | 90.4     | 79.8      | 79.2           | 76.7           |
+| biLSTM     | 4096 | 78.2     | 78.6      | 80.4           | 78.3           |
+| biLSTM-max | 4096 | 84.1     | 84.0      | 81.9           | 80.8           |
 
-## License
-[MIT](https://choosealicense.com/licenses/mit/)
